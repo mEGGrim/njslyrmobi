@@ -6,13 +6,14 @@ require 'open-uri'
 require 'nokogiri'
 # NKF
 require 'nkf'
+require 'logger'
 
 
 class NJSLYRepisode
 	@texts
 	attr_accessor :texts, :episodetitle
 
-	def initialize(url = 'http://togetter.com/li/241872')
+	def initialize(url)
 		@texts =  Array.new
 		pagenum = 1
 		
@@ -21,6 +22,7 @@ class NJSLYRepisode
 			doc = Nokogiri::HTML.parse(open("#{url}?page=#{pagenum.to_s}"))
 			# 1ページ目なら当該エピソードのタイトルを取得する
 			@episodetitle = getEpTitle(doc) if pagenum == 1
+			Logger.new(STDOUT).debug("#{@episodetitle} \##{pagenum.to_s}")
 			
 			tweets = doc.xpath('//div[@class="tweet"]')
 			# 分割ページに残データが無ければループ終了
@@ -36,14 +38,14 @@ class NJSLYRepisode
 
 	def getEpTitle(doc)
 		if ms = NKF::nkf('-Wwxm0Z0', doc.title).match(/\A(.*) - Togetterまとめ\z/) 
-			ms[1]
+			ms[1].gsub(/[「」]/, '')
 		else 
 			''
 		end
 	end
 
 	def saveFile(filename = @episodetitle)
-		File.open("#{filename}.txt", 'w') do |f|
+		File.open("./ep/#{filename}.txt", 'w') do |f|
 			@texts.each do |t|
 				f.puts t
 			end
