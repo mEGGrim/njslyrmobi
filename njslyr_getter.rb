@@ -24,9 +24,9 @@ class NJSLYRepisode
 			# リダイレクトが発生した場合は最初のページに戻されているので終了
 			break if(!page)
 			doc = Nokogiri::HTML::parse(page)
-			# 1ページ目なら当該エピソードのタイトルを取得する
-			@episodetitle = getEpTitle(doc) if pagenum == 1
-			Logger.new(STDOUT).debug("#{@episodetitle} \##{pagenum.to_s}")
+			# 当該エピソードのタイトルを取得する
+			@episodetitle = getEpTitle(doc)
+			Logger.new(STDOUT).debug("#{@episodetitle} page:#{pagenum.to_s}")
 			# コメント欄もdiv.tweetなのでサニタイズする
 			tweets = doc.xpath('//div[@class="tweet"]').map{|e| e if e.css('span').empty?}
 			# 各tweetを取得
@@ -36,11 +36,12 @@ class NJSLYRepisode
 			pagenum += 1
 			sleep 5
 		end
+		saveFile
 	end
 
 	def openPage(target_url)
 		begin
-			open(target_url, :redirect => false)
+			open(target_url, :redirect => false, "User-Agent" => "Mozilla/5.0 (iPhone; CPU iPhone OS 7_0 like Mac OS X) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11A465 Safari/9537.53")
 		rescue
 			nil
 		end
@@ -48,7 +49,7 @@ class NJSLYRepisode
 
 	def getEpTitle(doc)
 		if ms = NKF::nkf('-Wwxm0Z0', doc.title).match(/\A(.*) - Togetterまとめ\z/) 
-			ms[1].gsub(/[「」]/, '')
+			ms[1].gsub(/[「」]|\s/, '')
 		else 
 			''
 		end
