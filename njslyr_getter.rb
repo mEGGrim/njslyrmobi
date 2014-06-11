@@ -16,23 +16,33 @@ class NJSLYRepisode
 	def initialize(url)
 		@texts =  Array.new
 		pagenum = 1
-		
+
 		# 分割ページに対応するためにループ
 		loop do
-			doc = Nokogiri::HTML.parse(open("#{url}?page=#{pagenum.to_s}"))
+			numberedurl = "#{url}?page=#{pagenum.to_s}"
+			page = openPage(numberedurl)
+			# リダイレクトが発生した場合は最初のページに戻されているので終了
+			break if(!page)
+			doc = Nokogiri::HTML::parse(page)
 			# 1ページ目なら当該エピソードのタイトルを取得する
 			@episodetitle = getEpTitle(doc) if pagenum == 1
 			Logger.new(STDOUT).debug("#{@episodetitle} \##{pagenum.to_s}")
-			
-			tweets = doc.xpath('//div[@class="tweet"]')
-			# 分割ページに残データが無ければループ終了
-			break if tweets.empty?
+			# コメント欄もdiv.tweetなのでサニタイズする
+			tweets = doc.xpath('//div[@class="tweet"]').map{|e| e if e.css('span').empty?}
 			# 各tweetを取得
 			tweets.each do |e|
-				@texts.push e.text
+				@texts.push e.children.text if e and e.children
 			end
-			
 			pagenum += 1
+			sleep 5
+		end
+	end
+
+	def openPage(target_url)
+		begin
+			open(target_url, :redirect => false)
+		rescue
+			nil
 		end
 	end
 
