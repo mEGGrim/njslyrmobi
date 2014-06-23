@@ -31,7 +31,7 @@ class NJSLYRepisode
 			tweets = doc.xpath('//div[@class="tweet"]').map{|e| e if e.css('span').empty?}
 			# 各tweetを取得
 			tweets.each do |e|
-				@texts.push e.children.text if e and e.children
+				@texts.push e.children.text.gsub(/　/, ' ') if e and e.children
 			end
 			pagenum += 1
 			sleep 5
