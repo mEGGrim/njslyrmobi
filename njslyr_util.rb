@@ -8,7 +8,16 @@ module NJSLYR_Util
 		return if !listfile
 		File.open(File.expand_path(listfile), 'r') do |f|
 			f.each_line do |l|
-				ep = NJSLYRepisode.new(l.gsub(/\n|\s/, ''))
+				l.gsub! /\n|\s/, ''
+				if l =~ /http:\/\/togetter.com\/li\/[0-9]+/
+					NJSLYRepisode.new(l)
+				else
+					Logger.new(STDOUT).debug("Getting from Wiki Page...")
+					get_togetter_list(l).each do |ep|
+						NJSLYRepisode.new(ep)
+					end
+				end
+				# リストに記載されていたのがタイトルかWikiの場合はリスト取得する
 			end
 		end
 	end
@@ -19,7 +28,7 @@ module NJSLYR_Util
 		puts episode_title
 		files = Dir.glob("#{File.dirname first_file}/#{episode_title}*").sort do |a, b|
 			reg = /#{episode_title}[^\d]*([0-9]+)[^\d]*/
-			File.basename(a).match(reg)[1].to_i <=> File.basename(b).match(reg)[1].to_i
+				File.basename(a).match(reg)[1].to_i <=> File.basename(b).match(reg)[1].to_i
 		end
 		if !files.empty?
 			arr = []
@@ -33,7 +42,25 @@ module NJSLYR_Util
 		end
 	end
 
-	module_function :get_episodes, :join_episodes
+	# 対象のWikiページからTogetterのURLリストを取得する
+	def get_togetter_list(url)
+		parsed_url = url
+		if parsed_url !~ %r|https?://.*|
+			parsed_url = "「#{parsed_url}」" if parsed_url !~ %r|\A「.*」\z|
+			parsed_url = "http://wikiwiki.jp/njslyr/?#{parsed_url}"
+		end
+
+		Logger.new(STDOUT).debug("GET...#{parsed_url}")
+		doc = Nokogiri::HTML::parse open(URI.encode parsed_url.encode('EUC-JP'))
+		mokuji = doc.xpath('//div[@id="body"]/p').first
+		flag = true
+		mokuji.children.map{|child|
+			if child.text =~ /.*実況.*/ then flag = false
+			elsif child.text =~ /.*まとめ.*/ then  flag = true end
+			child.attribute('href').value if flag and child.attribute('href')
+		}.compact
+	end
+	module_function :get_episodes, :join_episodes, :get_togetter_list
 end
 
 class String
