@@ -12,9 +12,14 @@ module NJSLYR_Util
 				if l =~ /http:\/\/togetter.com\/li\/[0-9]+/
 					NJSLYRepisode.new(l)
 				else
+					# togetter以外の場合はエピソートタイトルかWikiのURLとみなす
 					Logger.new(STDOUT).debug("Getting from Wiki Page...")
-					get_togetter_list(l).each do |ep|
-						NJSLYRepisode.new(ep)
+					begin
+						get_togetter_list(l).each do |ep|
+							NJSLYRepisode.new(ep)
+						end
+					rescue => e
+						Logger.new(STDOUT).error(e.to_s);
 					end
 				end
 				# リストに記載されていたのがタイトルかWikiの場合はリスト取得する
@@ -46,15 +51,17 @@ module NJSLYR_Util
 	def get_togetter_list(url)
 		parsed_url = url
 		if parsed_url !~ %r|https?://.*|
-			parsed_url = "「#{parsed_url}」" if parsed_url !~ %r|\A「.*」\z|
+			parsed_url = "「#{parsed_url}" if parsed_url !~ %r|\A「.*\z|
+			parsed_url = "#{parsed_url}」" if parsed_url !~ %r|\A.*」\z|
 			parsed_url = "http://wikiwiki.jp/njslyr/?#{parsed_url}"
 		end
 
 		Logger.new(STDOUT).debug("GET...#{parsed_url}")
 		doc = Nokogiri::HTML::parse open(URI.encode parsed_url.encode('EUC-JP'))
-		mokuji = doc.xpath('//div[@id="body"]/p').first
+		indexes = doc.xpath('//div[@id="body"]/p').first
 		flag = true
-		mokuji.children.map{|child|
+		raise "Not Found WikiPage #{parsed_url}" if !indexes
+		indexes.children.map{|child|
 			if child.text =~ /.*実況.*/ then flag = false
 			elsif child.text =~ /.*まとめ.*/ then  flag = true end
 			child.attribute('href').value if flag and child.attribute('href')
