@@ -50,7 +50,7 @@ class NJSLYRepisode
 
 	def getEpTitle(doc)
 		if ms = NKF::nkf('-Wwxm0Z0', doc.title).match(/\A(.*) - Togetterまとめ\z/) 
-			ms[1].gsub(/[「」]|\s/, '')
+			ms[1].gsub(/[「」]|\s/, '').gsub(/\(\dページ目\)/, '')
 		else 
 			''
 		end
